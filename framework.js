@@ -5,9 +5,10 @@ class Framework {
         this.world = new World(this);
 
         this.world.obstacles = [
+            new Circle(120, 400, 20),
+            new Circle(470, 40, 20),
             new Circle(850, 350, 80),
             new Circle(20, 480, 90),
-            new Circle(120, 400, 20),
             //420, 300, 20,
             new Circle(500, 350, 50),
         ];
@@ -24,7 +25,7 @@ class Framework {
             this.world.obstacles.push(new Circle(this.world.size.width, y, wallObS));
         }
 
-        for(let i = 0; i < 5; i++) {
+        /*for(let i = 0; i < 5; i++) {
             let x = 500 + Math.random() * 1000;
 
             let y;
@@ -38,7 +39,7 @@ class Framework {
             this.world.obstacles.push(
                 new Circle(x, y, 30)
             );
-        }
+        }*/
 
         this.generation = 0;
         this.iterations = 0;
@@ -69,8 +70,6 @@ class Framework {
                 new Car(null, this.world)
             );
         }
-
-        this.world.population[0].direction = (new Vector2(1, 1)).normalize();
 
         this.resortPopulation();
     }

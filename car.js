@@ -11,7 +11,7 @@ class Car {
         this.goalReached = false;
 
         this.fieldOfViewSectors = 16;
-        this.fieldOfViewDistance = 350;
+        this.fieldOfViewDistance = 450;
         this.fieldOfViewAngle = 235;
 
         this.outerRadius = Math.sqrt(this.length * this.length + this.width * this.width) * 0.5;
@@ -72,12 +72,24 @@ class Car {
         this.cacheObjectsInFieldOfView();
 
         // use brain
-        let directionToNextGoal = this.world.goals[this.currentGoal].substract(this.position).normalize();
+        let directionToNextGoal = this.nextGoal().substract(this.position).normalize();
 
         let angleToNextGoal = directionToNextGoal.angle() / (2 * Math.PI);
         let angle = this.direction.angle() / (2 * Math.PI);
 
-        let output = this.brain.use([angleToNextGoal, angle].concat(this.cachedObjectsInFieldOfView));
+        let input = [];
+
+        this.cachedObjectsInFieldOfView.forEach((item, index) => {
+            if(item.type == ItemNone) {
+                input[index] = 0;
+                input[index + this.fieldOfViewSectors] = 0;
+            } else {
+                input[index + item.type * this.fieldOfViewSectors] = item.distance;
+                input[index + (1 - item.type) * this.fieldOfViewSectors] = 0;
+            }
+        });
+
+        let output = this.brain.use(input);
 
         let rotation = deltaTime * (output[0] + output[1]) / 180 * Math.PI * 200;
 
@@ -102,7 +114,7 @@ class Car {
             this.lifeTime+= 25;
 
             if(this.currentGoal >= this.world.goals) {
-                this.goalReached = true;
+                // this.goalReached = true;
             }
         }
     }
@@ -150,6 +162,10 @@ class Car {
         return this.cachedCollider;
     }
 
+    nextGoal() {
+        return this.world.goals[this.currentGoal % this.world.goals.length];
+    }
+
     cacheObjectsInFieldOfView() {
         /*
         Checks all sectors for obstacles
@@ -163,9 +179,15 @@ class Car {
 
         this.cachedObjectsInFieldOfView = [];
 
-        let fieldOfView = new Circle(this.centerX(), this.centerY(), this.fieldOfViewDistance);
+        let fieldOfView = Circle.fromVector(this.position, this.fieldOfViewDistance);
 
-        let obstaclesInRange = [];
+        let fieldOfViewRadian = this.fieldOfViewAngle * Math.PI / 180;
+
+        let fieldOfViewStart = this.direction.angle() - fieldOfViewRadian * 0.5;
+
+        for (let sector = 0; sector < this.fieldOfViewSectors; sector++) {
+            this.cachedObjectsInFieldOfView[sector] = new Item(ItemNone, 0);
+        }
 
         // objects in range
         for (let i = 0; i < this.world.obstacles.length; i++) {
@@ -175,20 +197,6 @@ class Car {
                 continue;
             }
 
-            obstaclesInRange.push(obstacle);
-        }
-
-        let fieldOfViewRadian = this.fieldOfViewAngle * Math.PI / 180;
-
-        let fieldOfViewStart = this.direction.angle() - fieldOfViewRadian * 0.5;
-
-        for (let sector = 0; sector < this.fieldOfViewSectors; sector++) {
-            this.cachedObjectsInFieldOfView[sector] = 0;
-        }
-
-        for (let i = 0; i < obstaclesInRange.length; i++) {
-            let obstacle = obstaclesInRange[i];
-
             let directionToObstacle = obstacle.toVector().substract(this.position);
 
             let angleBetweenThisAndObstacle = Math.atan2(directionToObstacle.y, directionToObstacle.x);
@@ -196,36 +204,53 @@ class Car {
             
             let a = Modulo.signed(angleBetweenThisAndObstacle - ownAngle, Math.PI * 2);
 
-            window.debug.innerHTML = fieldOfViewRadian + "<br>" + a + "<br>" + angleBetweenThisAndObstacle + "<br>" + ownAngle;
-
-            if (a >= 0 && a < fieldOfViewRadian) {
-                obstacle.mark();
-                /*if (d < this.cachedObjectsInFieldOfView[Math.floor(a * FOVDIVISIONS / fieldOfViewRadian)].distance) {
-                    this.cachedObjectsInFieldOfView[Math.floor(a * FOVDIVISIONS / fieldOfViewRadian)].distance = d;
-                    this.cachedObjectsInFieldOfView[Math.floor(a * FOVDIVISIONS / fieldOfViewRadian)].type = type;
-                }*/
-            } else if (a <= 0 && -a < fieldOfViewRadian) {
-                obstacle.mark();
-                /*if (d < this.cachedObjectsInFieldOfView[Math.floor(-a * FOVDIVISIONS / fieldOfViewRadian) + FOVDIVISIONS].distance) {
-                    this.cachedObjectsInFieldOfView[Math.floor(-a * FOVDIVISIONS / fieldOfViewRadian) + FOVDIVISIONS].distance = d;
-                    this.cachedObjectsInFieldOfView[Math.floor(-a * FOVDIVISIONS / fieldOfViewRadian) + FOVDIVISIONS].type = type;
-                }*/
+            if(a > Math.PI) {
+                a = a - Math.PI * 2;
             }
 
-            let sector = 0;
-
-            if (true /*obstacle.intersectsLineSegment(this.position, pointB) ||
-                obstacle.intersectsLineSegment(this.position, pointC)*/) {
+            if((a >= 0 && a < fieldOfViewRadian / 2) || (a <= 0 && -a < fieldOfViewRadian / 2)) {
+                let sector = Math.floor(a * this.fieldOfViewSectors / fieldOfViewRadian) + this.fieldOfViewSectors / 2;
 
                 let distanceToObstacleBorder = obstacle.toVector().distance(this.position) - obstacle.r;
-
                 let newDistance = distanceToObstacleBorder / this.fieldOfViewDistance - 1;
 
-                if(this.cachedObjectsInFieldOfView[sector] > 0) {
-                    newDistance = Math.min(this.cachedObjectsInFieldOfView[sector], newDistance);
+                if(this.cachedObjectsInFieldOfView[sector].type == ItemNone ||
+                    Math.abs(this.cachedObjectsInFieldOfView[sector].distance) <= newDistance) {
+                    this.cachedObjectsInFieldOfView[sector].type = ItemObstacle;
+                    this.cachedObjectsInFieldOfView[sector].distance = newDistance;
                 }
+            }
 
-                this.cachedObjectsInFieldOfView[sector] = newDistance;
+            if (false /*obstacle.intersectsLineSegment(this.position, pointB) ||
+                obstacle.intersectsLineSegment(this.position, pointC)*/) {
+            }
+        }
+
+        let nextGoal = this.nextGoal();
+
+        if (fieldOfView.hit(Circle.fromVector(nextGoal, 20))) {
+            let directionToObstacle = nextGoal.substract(this.position);
+
+            let angleBetweenThisAndObstacle = Math.atan2(directionToObstacle.y, directionToObstacle.x);
+            let ownAngle = Modulo.modulo(this.direction.angle(), 2 * Math.PI);
+            
+            let a = Modulo.signed(angleBetweenThisAndObstacle - ownAngle, Math.PI * 2);
+
+            if(a > Math.PI) {
+                a = a - Math.PI * 2;
+            }
+
+            if((a >= 0 && a < fieldOfViewRadian / 2) || (a <= 0 && -a < fieldOfViewRadian / 2)) {
+                let sector = Math.floor(a * this.fieldOfViewSectors / fieldOfViewRadian) + this.fieldOfViewSectors / 2;
+
+                let distanceToObstacleBorder = nextGoal.distance(this.position) - 20;
+                let newDistance = 1 - distanceToObstacleBorder / this.fieldOfViewDistance;
+
+                if(this.cachedObjectsInFieldOfView[sector].type == ItemNone ||
+                    Math.abs(this.cachedObjectsInFieldOfView[sector].distance) <= newDistance) {
+                    this.cachedObjectsInFieldOfView[sector].type = ItemGoal;
+                    this.cachedObjectsInFieldOfView[sector].distance = newDistance;
+                }
             }
         }
 
@@ -249,6 +274,8 @@ class Car {
     }
 
     hitBoundries() {
+        return false;
+
         let collider = this.collider();
 
         if (collider.x - collider.r <= 0 || collider.y - collider.r <= 0) {
@@ -286,7 +313,7 @@ class Car {
     }
 
     hitGoal() {
-        return Circle.fromVector(this.world.goals[this.currentGoal], 20).hit(this.collider());
+        return Circle.fromVector(this.nextGoal(), 20).hit(this.collider());
     }
 
     _checkHelper(x, y) {
@@ -306,7 +333,7 @@ class Car {
             // return 0;
         }
 
-        return this.currentGoal + this.lifeTime / 4;
+        return (this.currentGoal * 10) + this.lifeTime / 4;
     }
 
     color() {
@@ -381,62 +408,53 @@ class Car {
 
         context.restore();
 
-        // direction
-        context.fillStyle = 'rgba(0, 0, 0, 1)';
-        context.strokeStyle = 'rgba(0, 0, 0, 1)';
-
-        context.beginPath();
-
-        context.moveTo(this.position.x, this.position.y);
-        context.lineTo(this.position.x + this.direction.x * 50, this.position.y + this.direction.y * 50);
-
-        context.stroke();
-        context.fill();
-
         // collider
         this.collider().draw(context);
 
-        let fieldOfViewRadian = this.fieldOfViewAngle * Math.PI / 180;
+        if(false /* field of view */) {
+            let fieldOfViewRadian = this.fieldOfViewAngle * Math.PI / 180;
 
-        let fieldOfViewStart = this.direction.angle() - fieldOfViewRadian * 0.5;
+            let fieldOfViewStart = this.direction.angle() - fieldOfViewRadian * 0.5;
 
-        for (let sector = 0; sector < this.fieldOfViewSectors; sector++) {
-            // FoV
-            context.beginPath();
+            for (let sector = 0; sector < this.fieldOfViewSectors; sector++) {
+                // FoV
+                context.beginPath();
 
-            let alpha = 0.05 + (sector / this.fieldOfViewSectors * 0.3);
+                let alpha = 0.05 + (sector / this.fieldOfViewSectors * 0.3);
 
-            if (this.objectsInFieldOfView()[sector] < 0) {
-                context.fillStyle = 'rgba(200, 100, 100, ' + alpha + ')';
-                context.strokeStyle = 'rgba(200, 100, 100, ' + alpha + ')';
-            } else if(this.objectsInFieldOfView()[sector] > 0) {
-                context.fillStyle = 'rgba(100, 200, 100, ' + alpha + ')';
-                context.strokeStyle = 'rgba(100, 200, 100, ' + alpha + ')';
-            } else {
-                context.fillStyle = 'rgba(200, 200, 200, ' + alpha + ')';
-                context.strokeStyle = 'rgba(200, 200, 200, ' + alpha + ')';
+                if (this.objectsInFieldOfView()[sector].type == ItemObstacle) {
+                    context.fillStyle = 'rgba(200, 100, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance) + ')';
+                    context.strokeStyle = 'rgba(200, 100, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance) + ')';
+                } else if(this.objectsInFieldOfView()[sector].type == ItemGoal) {
+                    context.fillStyle = 'rgba(100, 200, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance) + ')';
+                    context.strokeStyle = 'rgba(100, 200, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance) + ')';
+                } else {
+                    context.fillStyle = 'rgba(200, 200, 200, ' + alpha + ')';
+                    context.strokeStyle = 'rgba(200, 200, 200, ' + alpha + ')';
+                }
+
+                context.moveTo(this.centerX(), this.centerY());
+
+                context.arc(
+                    this.centerX(),
+                    this.centerY(),
+                    this.fieldOfViewDistance,
+                    fieldOfViewStart + (fieldOfViewRadian / this.fieldOfViewSectors) * sector,
+                    fieldOfViewStart + (fieldOfViewRadian / this.fieldOfViewSectors) * (sector + 1)
+                );
+
+                context.lineTo(this.centerX(), this.centerY());
+
+                context.fill();
+                context.stroke();
             }
-
-            context.moveTo(this.centerX(), this.centerY());
-
-            context.arc(
-                this.centerX(),
-                this.centerY(),
-                this.fieldOfViewDistance,
-                fieldOfViewStart + (fieldOfViewRadian / this.fieldOfViewSectors) * sector,
-                fieldOfViewStart + (fieldOfViewRadian / this.fieldOfViewSectors) * (sector + 1)
-            );
-
-            context.lineTo(this.centerX(), this.centerY());
-
-            context.fill();
-            context.stroke();
         }
 
         // this.brain.draw(context);
     }
 }
 
+const ItemNone = -1;
 const ItemObstacle = 0;
 const ItemGoal = 1;
 
