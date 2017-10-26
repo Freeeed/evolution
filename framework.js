@@ -7,10 +7,10 @@ class Framework {
         this.world.obstacles = [
             new Circle(120, 400, 20),
             new Circle(470, 40, 20),
-            new Circle(850, 350, 80),
-            new Circle(20, 480, 90),
+            new Circle(850, 350, 20),
+            new Circle(20, 480, 20),
             //420, 300, 20,
-            new Circle(500, 350, 50),
+            new Circle(500, 350, 20),
         ];
 
         let wallObS = 8;
@@ -71,7 +71,7 @@ class Framework {
             );
         }
 
-        this.resortPopulation();
+        // this.world.resortPopulation();
     }
 
     update(deltaTime) {
@@ -163,61 +163,6 @@ class Framework {
         this.addNewGeneration();
 
         this.generation++;
-    }
-
-    addNewGeneration() {
-        for(let generation = 0; generation < this.updatesPerGeneration; generation++) {
-            let parents = this._chooseParents();
-
-            let child = this._combineParents(
-                parents.a,
-                parents.b
-            );
-
-            child.mutate();
-
-            this.world.population.push(child);
-        }
-    }
-
-    resortPopulation() {
-        this.world.population.sort(function(a, b) {
-            if(a.getFitness() == b.getFitness()) {
-                return 0;
-            }
-
-            if(a.getFitness() > b.getFitness()) {
-                return -1;
-            }
-
-            if(a.getFitness() < b.getFitness()) {
-                return 1;
-            }
-        });
-    }
-
-    removeUnfittest() {
-        for(let generation = 0; generation < this.updatesPerGeneration; generation++) {
-            this.world.population.pop();
-        }
-    }
-
-    best() {
-        if(this.world.population.length < 1) {
-            return null;
-        }
-
-        return this.world.population[0];
-    }
-
-    median() {
-        if(this.world.population.length < 1) {
-            return null;
-        }
-
-        let medianPosition = this.world.population.length - Math.ceil(this.world.population.length / 2);
-
-        return this.world.population[medianPosition];
     }
 
     _chooseParents() {

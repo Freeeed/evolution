@@ -99,7 +99,7 @@ class Renderer {
             obstacle.draw(this.canvas);
         }
 
-        let best = this.framework.best();
+        let best = this.framework.world.best();
 
         if (best != null) {
             best.draw(this.canvas);

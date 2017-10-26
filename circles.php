@@ -60,7 +60,7 @@
 
 		<br>
 
-		Population: <input type="text" id="populationInput" value="1"><br>
+		Population: <input type="text" id="populationInput" value="15"><br>
 		Generations: <input type="text" id="generationsInput" value="10"><br>
 
 		<button id="initialize-button">Initialize</button>
@@ -111,7 +111,8 @@
 		let framework = new Framework();
 
 		framework.addProgressHandler(progress => {
-			stats.innerHTML = "Median: " + framework.median().fittness + " | Best: " + framework.best().fittness + " ";
+			stats.innerHTML = "Median: " + Math.round(framework.world.median().getFitness()) +
+				" | Best: " + Math.round(framework.world.median().getFitness()) + " ";
 
 			progressBar.style.width = progress + "%";
 			progressBar.innerHTML = (Math.round(progress * 100) / 100) + "%";

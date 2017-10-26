@@ -50,9 +50,24 @@ class World {
                 newPopulation.push(item);
             }
         });
+
         this.population = newPopulation;
 
-        window.debug.innerHTML = deathCounter + " " + this.population.length;
+        this.population.sort((a, b) => {
+            if(a.getFitness() == b.getFitness()) {
+                return 0;
+            }
+
+            if(a.getFitness() > b.getFitness()) {
+                return -1;
+            }
+
+            if(a.getFitness() < b.getFitness()) {
+                return 1;
+            }
+        });
+
+        this.framework.reportProgress(0);
     }
 
     addNewPopulation() {
@@ -66,8 +81,10 @@ class World {
         let b = matingPool[idx2];
 
         let dna = a.brain.combine(b.brain);
-
+        
         this.population.push(new Car(dna, this));
+
+        this.generation += 1 / this.population.length;
     }
 
     makeMatingpool() {
@@ -89,5 +106,23 @@ class World {
         });
 
         return matingPool;
+    }
+
+    best() {
+        if(this.population.length < 1) {
+            return null;
+        }
+
+        return this.population[0];
+    }
+
+    median() {
+        if(this.population.length < 1) {
+            return null;
+        }
+
+        let medianPosition = this.population.length - Math.ceil(this.population.length / 2);
+
+        return this.population[medianPosition];
     }
 }

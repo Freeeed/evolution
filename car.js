@@ -18,7 +18,7 @@ class Car {
 
         this.rbgColor = Math.round(Math.random() * 255) + ", " + Math.round(Math.random() * 255) + ", " + Math.round(Math.random() * 255);
 
-        this.velocity = 2;
+        this.velocity = 3;
         this.position = Vector2.fromObject(this.world.start);
         this.initialDirection = Vector2.fromAngle(Math.random() * 2 * Math.PI);
 
@@ -423,11 +423,11 @@ class Car {
                 let alpha = 0.05 + (sector / this.fieldOfViewSectors * 0.3);
 
                 if (this.objectsInFieldOfView()[sector].type == ItemObstacle) {
-                    context.fillStyle = 'rgba(200, 100, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance) + ')';
-                    context.strokeStyle = 'rgba(200, 100, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance) + ')';
+                    context.fillStyle = 'rgba(200, 100, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance * 0.5) + ')';
+                    context.strokeStyle = 'rgba(200, 100, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance * 0.5) + ')';
                 } else if(this.objectsInFieldOfView()[sector].type == ItemGoal) {
-                    context.fillStyle = 'rgba(100, 200, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance) + ')';
-                    context.strokeStyle = 'rgba(100, 200, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance) + ')';
+                    context.fillStyle = 'rgba(100, 200, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance * 0.5) + ')';
+                    context.strokeStyle = 'rgba(100, 200, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance * 0.5) + ')';
                 } else {
                     context.fillStyle = 'rgba(200, 200, 200, ' + alpha + ')';
                     context.strokeStyle = 'rgba(200, 200, 200, ' + alpha + ')';
