@@ -1,5 +1,6 @@
+import Stage from "./brain/stage";
 
-class Brain {
+export default class Brain {
 
     constructor(stageSizes) {
         this.stages = [];
@@ -30,7 +31,7 @@ class Brain {
 
         let newData = [];
 
-        let numswaps = data.length / 10; 
+        let numswaps = data.length / 10;
         let swaps = [];
 
         for (let i = 0; i < swaps.length-1; i++) {
@@ -50,7 +51,7 @@ class Brain {
                 swapidx++;
                 that = !that;
             }
-            
+
             let d = 0;
 
             if (that) {
@@ -119,7 +120,7 @@ class Brain {
             for (let i = 0; i < this.stages[s].axons.length; i++) {
                 for (let j = 0; j < this.stages[s].axons[0].length - 1; j++) {
                     let weight = this.stages[s].axons[i][j];
-                    
+
                     if (Math.abs(weight) < 0)
                         continue;
 

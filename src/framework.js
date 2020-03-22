@@ -1,17 +1,21 @@
+import Car from './car';
+import Circle from './circle';
+import World from './world';
 
-class Framework {
+export default class Framework {
 
     constructor() {
         this.world = new World(this);
 
-        this.world.obstacles = [
+        this.world.obstacles = [];
+        /*this.world.obstacles = [
             new Circle(120, 400, 20),
             new Circle(470, 40, 20),
             new Circle(850, 350, 20),
             new Circle(20, 480, 20),
             //420, 300, 20,
             new Circle(500, 350, 20),
-        ];
+        ];*/
 
         let wallObS = 8;
 
@@ -65,7 +69,11 @@ class Framework {
         this.world.population = [];
         this.updatesPerGeneration = updatesPerGeneration;
 
-        for(let k = 0; k < populationNumber; k++) {
+        for (let k = 0; k < 8; k++) {
+            this.world.spawnPerson();
+        }
+
+        for (let k = 0; k < populationNumber; k++) {
             this.world.population.push(
                 new Car(null, this.world)
             );
@@ -75,7 +83,7 @@ class Framework {
     }
 
     update(deltaTime) {
-        if(this.paused) {
+        if (this.paused) {
             return;
         }
 
@@ -84,7 +92,7 @@ class Framework {
 
     start(iterations, speed) {
 
-        if(!this.paused) {
+        if (!this.paused) {
             return;
         }
 
@@ -102,13 +110,13 @@ class Framework {
 
     /**
      * Triggered once when simulation has finished
-     * 
+     *
      */
     simulationFinished() {
         return false;
 
-        for(let i = 0; i < this.world.population.length; i++) {
-            if(this.world.population[i].canMove()) {
+        for (let i = 0; i < this.world.population.length; i++) {
+            if (this.world.population[i].canMove()) {
                 return false;
             }
         }
@@ -118,12 +126,12 @@ class Framework {
 
     /**
      * Triggered once when simulation has finished
-     * 
+     *
      */
     simulationFinishedOnce() {
-        if(!this.paused && this.simulationFinished()) {
+        if (!this.paused && this.simulationFinished()) {
 
-            if(this.iteration >= this.iterations/*this.iterationsFinished()*/) {
+            if (this.iteration >= this.iterations/*this.iterationsFinished()*/) {
                 this.paused = true;
 
                 this.reportProgress(100);
@@ -144,25 +152,13 @@ class Framework {
     }
 
     addProgressHandler(callback) {
-        this.progressHandlers.push(callback);   
+        this.progressHandlers.push(callback);
     }
 
     reportProgress(progress) {
-        for(let i = 0; i < this.progressHandlers.length; i++) {
+        for (let i = 0; i < this.progressHandlers.length; i++) {
             this.progressHandlers[i](progress);
         }
-    }
-
-    updatePopulation() {
-        this.resortPopulation();
-
-        window.debug.innerHTML = `${this.median().getFitness()} <br> ${this.best().getFitness()}`;
-
-        this.removeUnfittest();
-
-        this.addNewGeneration();
-
-        this.generation++;
     }
 
     _chooseParents() {

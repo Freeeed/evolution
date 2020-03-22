@@ -1,5 +1,6 @@
+import {Vector2} from "./helpers";
 
-class Circle {
+export default class Circle {
 
     constructor(x, y, r) {
         this.x = x;
@@ -74,7 +75,7 @@ class Circle {
     distance(x, y, w, h) {
         // distance to mid - radius
     }
-    
+
     draw(context, color) {
         if(typeof color == 'undefined') {
             color = 'rgba(0, 0, 0, .05)';
@@ -88,7 +89,7 @@ class Circle {
 
         context.fillStyle = color;
         context.strokeStyle = 'rgba(0, 0, 0, .1)';
-        
+
         context.arc(this.x, this.y, this.r, 0, 2 * Math.PI);
 
         context.stroke();

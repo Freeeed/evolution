@@ -1,6 +1,11 @@
+export class Math2 {
+    static clamp(min, max, a) {
+        return Math.max(min, Math.min(a, max));
+    }
+}
 
-class Modulo {
-    static modulo(a, b){
+export class Modulo {
+    static modulo(a, b) {
         let k = Math.floor(a / b);
         if (a < 0) k--;
         return a - b * k;
@@ -15,7 +20,7 @@ class Modulo {
     }
 }
 
-class Vector2 {
+export class Vector2 {
 
     constructor(x, y) {
         this.x = x;
@@ -44,7 +49,7 @@ class Vector2 {
     }
 
     normalize() {
-        var length = this.length();
+        const length = this.length();
 
         if (length === 0) {
             return new Vector2(1, 0);
@@ -66,14 +71,14 @@ class Vector2 {
     }
 
     rotate(angle) {
-        var nx = (this.x * Math.cos(angle)) - (this.y * Math.sin(angle));
-        var ny = (this.x * Math.sin(angle)) + (this.y * Math.cos(angle));
+        const nx = (this.x * Math.cos(angle)) - (this.y * Math.sin(angle));
+        const ny = (this.x * Math.sin(angle)) + (this.y * Math.cos(angle));
 
         return new Vector2(nx, ny);
     }
 
     rotateBy(rotation) {
-        var angle = this.angle() + rotation;
+        const angle = this.angle() + rotation;
 
         return this.rotate(angle);
     }
@@ -98,14 +103,14 @@ class Vector2 {
     }
 
     toObject() {
-        return { x: this.x, y: this.y };
+        return {x: this.x, y: this.y};
     }
 
     static fromAngle(angle) {
         return (new Vector2(1, 0)).rotate(angle);
     }
 
-    static fromObject({ x, y }) {
+    static fromObject({x, y}) {
         return new Vector2(x, y);
     }
 }

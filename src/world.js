@@ -1,9 +1,14 @@
-class World {
+import {Math2, Vector2} from "./helpers";
+import Circle from "./circle";
+import Car from "./car";
+
+
+export default class World {
 
     constructor(framework) {
         this.framework = framework;
 
-        this.start = new Vector2(300, 300);
+        this.start = new Vector2(700, 250);
 
         this.goals = [
             new Vector2(600, 100),
@@ -15,6 +20,7 @@ class World {
             height: 483
         };
 
+        this.people = [];
         this.population = [];
         this.obstacles = [];
     }
@@ -30,23 +36,31 @@ class World {
     }
 
     update(deltaTime) {
+        let peopleCounter = 8;
+
+        if (this.people.length < peopleCounter) {
+            for (let person = 0; person < peopleCounter - this.people.length; person++) {
+                this.spawnPerson();
+            }
+        }
+
         let deathCounter = 0;
 
         this.population.forEach(item => {
             item.update(deltaTime);
 
-            if(!item.canMove()) {
+            if (!item.canMove()) {
                 deathCounter++;
             }
         });
 
-        for(let death = 0; death < deathCounter; death++) {
+        for (let death = 0; death < deathCounter; death++) {
             this.addNewPopulation();
         }
 
         let newPopulation = [];
         this.population.forEach(item => {
-            if(item.canMove()) {
+            if (item.canMove()) {
                 newPopulation.push(item);
             }
         });
@@ -54,15 +68,15 @@ class World {
         this.population = newPopulation;
 
         this.population.sort((a, b) => {
-            if(a.getFitness() == b.getFitness()) {
+            if (a.getFitness() === b.getFitness()) {
                 return 0;
             }
 
-            if(a.getFitness() > b.getFitness()) {
+            if (a.getFitness() > b.getFitness()) {
                 return -1;
             }
 
-            if(a.getFitness() < b.getFitness()) {
+            if (a.getFitness() < b.getFitness()) {
                 return 1;
             }
         });
@@ -71,7 +85,6 @@ class World {
     }
 
     addNewPopulation() {
-
         let matingPool = this.makeMatingpool();
 
         let idx1 = Math.floor(Math.random() * matingPool.length);
@@ -81,7 +94,7 @@ class World {
         let b = matingPool[idx2];
 
         let dna = a.brain.combine(b.brain);
-        
+
         this.population.push(new Car(dna, this));
 
         this.generation += 1 / this.population.length;
@@ -97,6 +110,10 @@ class World {
             }
         });
 
+        if (maxScore === 0) {
+            return this.population;
+        }
+
         this.population.forEach(item => {
             let amount = Math.floor(item.getFitness() * 100 / maxScore);
 
@@ -109,7 +126,7 @@ class World {
     }
 
     best() {
-        if(this.population.length < 1) {
+        if (this.population.length < 1) {
             return null;
         }
 
@@ -117,7 +134,7 @@ class World {
     }
 
     median() {
-        if(this.population.length < 1) {
+        if (this.population.length < 1) {
             return null;
         }
 
@@ -125,4 +142,22 @@ class World {
 
         return this.population[medianPosition];
     }
+
+    spawnPerson() {
+
+        let x = Math2.clamp(0.1, 0.9, Math.random()) * this.size.width;
+        let y = Math2.clamp(0.1, 0.9, Math.random()) * this.size.height;
+        let r = 20;
+
+        this.people.push(new Circle(x, y, r));
+    }
+
+    removePerson(person) {
+        let index = this.people.indexOf(person);
+
+        if (index !== -1) {
+            this.people.splice(index, 1);
+        }
+    }
 }
+

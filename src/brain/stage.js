@@ -1,5 +1,5 @@
 
-class Stage {
+export default class Stage {
 
     constructor(prevStage, size) {
         this.signalMultiplier = 2;
