@@ -34,7 +34,7 @@ export default class Brain {
         let numswaps = data.length / 10;
         let swaps = [];
 
-        for (let i = 0; i < swaps.length-1; i++) {
+        for (let i = 0; i < swaps.length - 1; i++) {
             swaps[i] = Math.floor(Math.random() * data.length);
         }
 
@@ -60,7 +60,7 @@ export default class Brain {
                 d = dataOther[i];
             }
 
-            d += (2 * Math.random() - 1) * 0.5;
+            d += (2 * Math.random() - 1) * 0.2;
 
             newData[i] = d;
         }
@@ -167,19 +167,19 @@ export default class Brain {
         }
     }
 
-    _neuronFillColor(weight){
-        if(weight >= 0){
+    _neuronFillColor(weight) {
+        if (weight >= 0) {
             return 'rgba(255,255,255,' + weight + ')';
-        }else{
+        } else {
             return 'rgba(1, 1, 1,' + Math.abs(weight) + ')';
         }
     }
 
     _neuronTextColor(weight) {
-        if(weight >= 0){
+        if (weight >= 0) {
             return 'rgb(0,0,0)';
-        }else{
-           return 'rgb(255,255,255)';
+        } else {
+            return 'rgb(255,255,255)';
         }
     }
 }

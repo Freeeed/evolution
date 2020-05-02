@@ -20,6 +20,11 @@ export class Modulo {
     }
 }
 
+export function cmp(a, b) {
+    const e = 0.00000001;
+    return Math.abs(a - b) < e;
+}
+
 export class Vector2 {
 
     constructor(x, y) {
@@ -102,8 +107,16 @@ export class Vector2 {
         return this.x * this.x + this.y * this.y;
     }
 
+    equals(other) {
+        return cmp(this.x, other.x) && cmp(this.y, other.y);
+    }
+
     toObject() {
         return {x: this.x, y: this.y};
+    }
+
+    toString() {
+        return '(' + this.x + ', ' + this.y + ')';
     }
 
     static fromAngle(angle) {
@@ -113,4 +126,34 @@ export class Vector2 {
     static fromObject({x, y}) {
         return new Vector2(x, y);
     }
+
+    draw(context, color) {
+        context.fillStyle = color;
+        context.strokeStyle = color;
+        context.beginPath();
+        context.moveTo(this.x - 3, this.y - 3);
+        context.lineTo(this.x + 3, this.y + 3);
+        context.fill();
+        context.stroke();
+
+        context.beginPath();
+        context.moveTo(this.x - 3, this.y + 3);
+        context.lineTo(this.x + 3, this.y - 3);
+        context.fill();
+        context.stroke();
+    }
+}
+
+export function sgn(a) {
+    return a < 0 ? -1 : 1;
+}
+
+export function unique(array, callback) {
+    return array.reduce((result, item) => {
+        if (!result.some((other) => callback(item, other))) {
+            result.push(item);
+        }
+
+        return result;
+    }, []);
 }

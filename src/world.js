@@ -10,11 +10,6 @@ export default class World {
 
         this.start = new Vector2(700, 250);
 
-        this.goals = [
-            new Vector2(600, 100),
-            new Vector2(1300, 320),
-        ];
-
         this.size = {
             width: 1440,
             height: 483
@@ -44,15 +39,21 @@ export default class World {
             }
         }
 
-        let deathCounter = 0;
-
-        this.population.forEach(item => {
+        let finished = this.population.reduce((finished, item) => {
             item.update(deltaTime);
 
             if (!item.canMove()) {
-                deathCounter++;
+                return finished + 1;
             }
-        });
+
+            return finished;
+        }, 0);
+
+        if (finished === this.population.length) {
+            throw new Error("generation finished");
+        }
+
+        return;
 
         for (let death = 0; death < deathCounter; death++) {
             this.addNewPopulation();
@@ -80,8 +81,6 @@ export default class World {
                 return 1;
             }
         });
-
-        this.framework.reportProgress(0);
     }
 
     addNewPopulation() {
@@ -96,8 +95,6 @@ export default class World {
         let dna = a.brain.combine(b.brain);
 
         this.population.push(new Car(dna, this));
-
-        this.generation += 1 / this.population.length;
     }
 
     makeMatingpool() {
@@ -144,9 +141,8 @@ export default class World {
     }
 
     spawnPerson() {
-
-        let x = Math2.clamp(0.1, 0.9, Math.random()) * this.size.width;
-        let y = Math2.clamp(0.1, 0.9, Math.random()) * this.size.height;
+        let x = Math2.clamp(0.2, 0.9, Math.random()) * this.size.width;
+        let y = Math2.clamp(0.2, 0.9, Math.random()) * this.size.height;
         let r = 20;
 
         this.people.push(new Circle(x, y, r));

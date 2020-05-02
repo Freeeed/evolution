@@ -1,4 +1,4 @@
-import {Vector2} from "./helpers";
+import {cmp, sgn, unique, Vector2} from "./helpers";
 
 export default class Circle {
 
@@ -8,17 +8,19 @@ export default class Circle {
         this.r = r;
 
         this.marked = false;
+        this.color = null;
     }
 
-    mark() {
+    mark(color) {
         this.marked = true;
+        this.color = color;
     }
 
-    toVector() {
+    toVector() {
         return Vector2.fromObject(this);
     }
 
-    static fromVector({ x, y }, radius) {
+    static fromVector({x, y}, radius) {
         return new Circle(x, y, radius);
     }
 
@@ -30,46 +32,45 @@ export default class Circle {
         return distanceX * distanceX + distanceY * distanceY <= radiusSum * radiusSum
     }
 
-    intersectsLine(a, b) {
-        a = a.substract(this.toVector());
-        b = b.substract(this.toVector());
+    intersectsLine(line) {
+        let a = line.origin.substract(this.toVector());
+        let b = line.target.substract(this.toVector());
 
-        let d = b.substract(a);
+        let d = line.direction;
+        let d_len = d.lengthSq();
 
         let D = a.cross(b);
 
-        let discriminant = (this.r * this.r) * d.lengthSq() - D * D;
+        let discriminant = (this.r * this.r) * d_len - D * D;
 
         // discriminant:
         // < 0 - no intersection
         // = 0 - one intersection
         // > 0 - two intersections
 
-        return discriminant >= 0;
-    }
-
-    intersectsLineSegment(a, b) {
-        let c = Vector2.fromObject(this);
-
-        let dir = b.substract(a);
-        let diff = c.substract(a);
-
-        let t = diff.dot(dir) / dir.dot(dir);
-
-        if (t < 0.0) {
-            t = 0.0;
+        if (discriminant < 0) {
+            return [];
         }
 
-        if (t > 1.0) {
-            t = 1.0;
+        let delta = Math.sqrt(discriminant);
+
+        let x1 = (d.y * D + sgn(d.y) * d.x * delta) / d_len;
+        let x2 = (d.y * D - sgn(d.y) * d.x * delta) / d_len;
+
+        let y1 = (-d.x * D + Math.abs(d.y) * delta) / d_len;
+        let y2 = (-d.x * D - Math.abs(d.y) * delta) / d_len;
+
+        let v1 = new Vector2(x1, y1).add(this.toVector());
+
+        if (cmp(discriminant, 0)) {
+            return [v1];
         }
 
-        let closest = a.add(dir.scale(t));
-        let d = c.substract(closest);
+        let v2 = new Vector2(x1, y2).add(this.toVector());
+        let v3 = new Vector2(x2, y1).add(this.toVector());
+        let v4 = new Vector2(x2, y2).add(this.toVector());
 
-        let distsqr = d.dot(d);
-
-        return distsqr <= this.r * this.r;
+        return unique([v1, v2, v3, v4], (a, b) => a.equals(b)).filter((v) => line.on(v));
     }
 
     distance(x, y, w, h) {
@@ -77,12 +78,12 @@ export default class Circle {
     }
 
     draw(context, color) {
-        if(typeof color == 'undefined') {
+        if (typeof color == 'undefined') {
             color = 'rgba(0, 0, 0, .05)';
         }
 
-        if(this.marked) {
-            color = 'rgba(255, 0, 0, 1)';
+        if (this.marked) {
+            color = this.color ? this.color : 'rgba(255, 0, 0, .2)';
         }
 
         context.beginPath();

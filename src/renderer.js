@@ -1,13 +1,9 @@
 import Framework from "./framework";
-import World from "./world";
 import Circle from "./circle";
 
 export default class Renderer {
 
     constructor(framework) {
-        this.offset = 50;
-        this.scale = 70;
-
         this.screen = document.getElementById('screen');
 
         this.canvas = this.screen.getContext('2d');
@@ -69,33 +65,8 @@ export default class Renderer {
             this.screenHeight
         );
 
-        this.canvas.beginPath();
-
-        this.canvas.moveTo(15, 100);
-        this.canvas.lineTo(15 + World.pixelsPerUnit(), 100);
-
-        this.canvas.fill();
-        this.canvas.stroke();
-
-        this.canvas.beginPath();
-
-        this.canvas.moveTo(15, 100);
-        this.canvas.lineTo(15, 100 - World.pixelsPerUnit());
-
-        this.canvas.fill();
-        this.canvas.stroke();
-
-        this.canvas.fillStyle = 'rgba(0, 0, 0, 1)';
-        this.canvas.font = "16px Arial";
-        this.canvas.fillText(this.framework.generation, 15, 15);
-
         Circle.fromVector(this.framework.world.start, 20).draw(this.canvas, 'rgba(0, 0, 0, 0.1)');
         Circle.fromVector(this.framework.world.start, 10).draw(this.canvas, 'rgba(0, 255, 0, 0.4)');
-
-        /*this.framework.world.goals.forEach(goal => {
-            Circle.fromVector(goal, 20).draw(this.canvas, 'rgba(0, 0, 0, 0.1)');
-            Circle.fromVector(goal, 10).draw(this.canvas, 'rgba(255, 0, 0, 0.4)');
-        });*/
 
         for (let i = 0; i < this.framework.world.obstacles.length; i++) {
             let obstacle = this.framework.world.obstacles[i];

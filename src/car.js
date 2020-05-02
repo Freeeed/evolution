@@ -2,6 +2,7 @@ import {Modulo, Vector2} from "./helpers";
 import World from "./world";
 import Circle from "./circle";
 import Brain from "./brain";
+import Line from "./line";
 
 export default class Car {
 
@@ -11,11 +12,11 @@ export default class Car {
         this.length = 40;
 
         this.currentGoal = 0;
-        this.lifeTime = 25;
+        this.lifeTime = 8;
         this.dead = false;
         this.goalReached = false;
 
-        this.fieldOfViewSectors = 16;
+        this.fieldOfViewRays = 24;
         this.fieldOfViewDistance = 450;
         this.fieldOfViewAngle = 235;
 
@@ -29,10 +30,10 @@ export default class Car {
 
         this.distanceTraveled = 0;
 
-        this.brain = new Brain([this.fieldOfViewSectors * 2, 16, 2]);
+        this.brain = new Brain([this.fieldOfViewRays * 2, 16, 3]);
 
         if (dna == null) {
-            let dnaLength = this.brain.calcNumberOfAxons([this.fieldOfViewSectors * 2, 16, 2], false) + 1;
+            let dnaLength = this.brain.calcNumberOfAxons([this.fieldOfViewRays * 2, 16, 3], false) + 1;
 
             dna = [];
 
@@ -47,7 +48,7 @@ export default class Car {
     }
 
     reset() {
-        this.lifeTime = 10;
+        this.lifeTime = 8;
         this.dead = false;
         this.goalReached = false;
         this.distanceTraveled = 0;
@@ -56,12 +57,10 @@ export default class Car {
         this.position = Vector2.fromObject(this.world.start);
         this.direction = this.initialDirection;
 
-        this.cachedObjectsInFieldOfView = [];
-
         this.cachedCollider = null;
         this.cacheCollider();
 
-        this.cachedObjectsInFieldOfView = [];
+        this.hits = [];
         this.cacheObjectsInFieldOfView();
     }
 
@@ -78,13 +77,13 @@ export default class Car {
 
         let input = [];
 
-        this.cachedObjectsInFieldOfView.forEach((item, index) => {
+        this.hits.forEach((item, index) => {
             if (item.type === ItemNone) {
                 input[index] = 0;
-                input[index + this.fieldOfViewSectors] = 0;
+                input[index + this.fieldOfViewRays] = 0;
             } else {
-                input[index + item.type * this.fieldOfViewSectors] = item.distance;
-                input[index + (1 - item.type) * this.fieldOfViewSectors] = 0;
+                input[index + item.type * this.fieldOfViewRays] = item.distance;
+                input[index + (1 - item.type) * this.fieldOfViewRays] = 0;
             }
         });
 
@@ -93,13 +92,13 @@ export default class Car {
         let rotation = deltaTime * (output[0] + output[1]) / 180 * Math.PI * 200;
 
         this.direction = this.direction.rotate(rotation);
+        this.velocity = output[2] * 3;
 
         // move
         this.move(deltaTime);
 
         this.cacheCollider();
 
-        // check for collisions
         if (this.hitBoundries()) {
             this.die();
         }
@@ -110,17 +109,8 @@ export default class Car {
 
         if (this.hitPerson()) {
             this.currentGoal++;
-            this.lifeTime += 8;
+            this.lifeTime += 4;
         }
-
-        /*if (this.hitGoal()) {
-            this.currentGoal++;
-            this.lifeTime += 25;
-
-            if (this.currentGoal >= this.world.goals) {
-                // this.goalReached = true;
-            }
-        }*/
     }
 
     move(deltaTime) {
@@ -158,101 +148,94 @@ export default class Car {
         return this.cachedCollider;
     }
 
-    nextGoal() {
-        return this.world.goals[this.currentGoal % this.world.goals.length];
-    }
-
     cacheObjectsInFieldOfView() {
-        /*
-        Checks all sectors for obstacles
-
-        1. check global circle and store obstables in range
-
-        2. for each sector check each obstacle in range
-
-        2.1. check for outer lines of individuel sector
-        */
-
-        this.cachedObjectsInFieldOfView = [];
+        this.hits = [];
 
         let fieldOfView = Circle.fromVector(this.position, this.fieldOfViewDistance);
-
         let fieldOfViewRadian = this.fieldOfViewAngle * Math.PI / 180;
-
         let fieldOfViewStart = this.direction.angle() - fieldOfViewRadian * 0.5;
 
-        for (let sector = 0; sector < this.fieldOfViewSectors; sector++) {
-            this.cachedObjectsInFieldOfView[sector] = new Item(ItemNone, 0);
-        }
+        for (let ray = 0; ray < this.fieldOfViewRays; ray++) {
+            this.hits[ray] = new Item(ItemNone, Infinity);
 
-        // objects in range
-        for (let i = 0; i < this.world.obstacles.length; i++) {
-            let obstacle = this.world.obstacles[i];
+            //this.castRayAgainst(ray, this.world.people, ItemGoal);
 
-            if (!fieldOfView.hit(obstacle)) {
-                continue;
+            for (let i = 0; i < this.world.people.length; i++) {
+                let obstacle = this.world.people[i];
+
+                if (!fieldOfView.hit(obstacle)) {
+                    continue;
+                }
+
+                let angle = fieldOfViewStart + (ray / this.fieldOfViewRays) * fieldOfViewRadian;
+
+                let direction = Vector2.fromAngle(angle);
+
+                let cast = new Line(this.position, direction, 1);
+
+                let intersection = obstacle.intersectsLine(cast);
+
+                if (intersection.length > 0) {
+                    let hit = intersection
+                        .reduce(
+                            (min, next) => next.distanceSq(this.position) < min.distanceSq(this.position) ? next : min,
+                            new Vector2(Infinity, Infinity)
+                        );
+
+                    let hitDistance = this.position.distance(hit);
+
+                    if (hitDistance > fieldOfView) {
+                        continue;
+                    }
+
+                    if (cast.scalar(hit) < 0) {
+                        continue;
+                    }
+
+                    this.hits[ray] = this.hits[ray].distance <= hitDistance ?
+                        this.hits[ray] :
+                        new Item(ItemGoal, hitDistance)
+                }
             }
 
-            let directionToObstacle = obstacle.toVector().substract(this.position);
+            for (let i = 0; i < this.world.obstacles.length; i++) {
+                let obstacle = this.world.obstacles[i];
 
-            let angleBetweenThisAndObstacle = Math.atan2(directionToObstacle.y, directionToObstacle.x);
-            let ownAngle = Modulo.modulo(this.direction.angle(), 2 * Math.PI);
+                if (!fieldOfView.hit(obstacle)) {
+                    continue;
+                }
 
-            let a = Modulo.signed(angleBetweenThisAndObstacle - ownAngle, Math.PI * 2);
+                let angle = fieldOfViewStart + (ray / this.fieldOfViewRays) * fieldOfViewRadian;
 
-            if (a > Math.PI) {
-                a = a - Math.PI * 2;
-            }
+                let direction = Vector2.fromAngle(angle);
 
-            if ((a >= 0 && a < fieldOfViewRadian / 2) || (a <= 0 && -a < fieldOfViewRadian / 2)) {
-                let sector = Math.floor(a * this.fieldOfViewSectors / fieldOfViewRadian) + this.fieldOfViewSectors / 2;
+                let cast = new Line(this.position, direction, 1);
 
-                let distanceToObstacleBorder = obstacle.toVector().distance(this.position) - obstacle.r;
-                let newDistance = distanceToObstacleBorder / this.fieldOfViewDistance;
+                let intersection = obstacle.intersectsLine(cast);
 
-                if (this.cachedObjectsInFieldOfView[sector].type === ItemNone ||
-                    Math.abs(this.cachedObjectsInFieldOfView[sector].distance) >= newDistance) {
-                    this.cachedObjectsInFieldOfView[sector].type = ItemObstacle;
-                    this.cachedObjectsInFieldOfView[sector].distance = newDistance;
+                if (intersection.length > 0) {
+                    let hit = intersection
+                        .reduce(
+                            (min, next) => next.distanceSq(this.position) < min.distanceSq(this.position) ? next : min,
+                            new Vector2(Infinity, Infinity)
+                        );
+
+                    let hitDistance = this.position.distance(hit);
+
+                    if (hitDistance > fieldOfView) {
+                        continue;
+                    }
+
+                    if (cast.scalar(hit) < 0) {
+                        continue;
+                    }
+
+                    this.hits[ray] = this.hits[ray].distance <= hitDistance ?
+                        this.hits[ray] :
+                        new Item(ItemObstacle, hitDistance)
                 }
             }
         }
-
-        for (let i = 0; i < this.world.people.length; i++) {
-            let obstacle = this.world.people[i];
-
-            if (!fieldOfView.hit(obstacle)) {
-                continue;
-            }
-
-            let directionToObstacle = obstacle.toVector().substract(this.position);
-
-            let angleBetweenThisAndObstacle = Math.atan2(directionToObstacle.y, directionToObstacle.x);
-            let ownAngle = Modulo.modulo(this.direction.angle(), 2 * Math.PI);
-
-            let a = Modulo.signed(angleBetweenThisAndObstacle - ownAngle, Math.PI * 2);
-
-            if (a > Math.PI) {
-                a = a - Math.PI * 2;
-            }
-
-            if ((a >= 0 && a < fieldOfViewRadian / 2) || (a <= 0 && -a < fieldOfViewRadian / 2)) {
-                let sector = Math.floor(a * this.fieldOfViewSectors / fieldOfViewRadian) + this.fieldOfViewSectors / 2;
-
-                let distanceToObstacleBorder = obstacle.toVector().distance(this.position) - obstacle.r;
-                let newDistance = distanceToObstacleBorder / this.fieldOfViewDistance;
-
-                if (this.cachedObjectsInFieldOfView[sector].type === ItemNone ||
-                    Math.abs(this.cachedObjectsInFieldOfView[sector].distance) >= newDistance) {
-                    this.cachedObjectsInFieldOfView[sector].type = ItemGoal;
-                    this.cachedObjectsInFieldOfView[sector].distance = newDistance;
-                }
-            }
-        }
-    }
-
-    objectsInFieldOfView() {
-        return this.cachedObjectsInFieldOfView;
     }
 
     hitObstacle() {
@@ -268,8 +251,6 @@ export default class Car {
     }
 
     hitBoundries() {
-        return false;
-
         let collider = this.collider();
 
         if (collider.x - collider.r <= 0 || collider.y - collider.r <= 0) {
@@ -277,33 +258,6 @@ export default class Car {
         }
 
         return collider.x + collider.r >= this.world.size.width || collider.y + collider.r >= this.world.size.height;
-
-        // accurate but computation heavier check
-
-        let cX = this.centerX();
-        let cY = this.centerY();
-
-        let Ox = this.length / 2;
-        let Oy = this.width / 2;
-
-        let angle = this.direction.angle();
-
-        let edgeAx = cX + Ox * Math.cos(angle) - Oy * Math.sin(angle);
-        let edgeAy = cY + Ox * Math.sin(angle) + Oy * Math.cos(angle);
-
-        let edgeBx = cX - Ox * Math.cos(angle) + Oy * Math.sin(angle);
-        let edgeBy = cY - Ox * Math.sin(angle) - Oy * Math.cos(angle);
-
-        let edgeCx = cX - Ox * Math.cos(angle) - Oy * Math.sin(angle);
-        let edgeCy = cY - Ox * Math.sin(angle) + Oy * Math.cos(angle);
-
-        let edgeDx = cX + Ox * Math.cos(angle) + Oy * Math.sin(angle);
-        let edgeDy = cY + Ox * Math.sin(angle) - Oy * Math.cos(angle);
-
-        return this._checkHelper(edgeAx, edgeAy) ||
-            this._checkHelper(edgeBx, edgeBy) ||
-            this._checkHelper(edgeCx, edgeCy) ||
-            this._checkHelper(edgeDx, edgeDy);
     }
 
     hitPerson() {
@@ -318,22 +272,6 @@ export default class Car {
         }
 
         return false;
-    }
-
-    hitGoal() {
-        return Circle.fromVector(this.nextGoal(), 20).hit(this.collider());
-    }
-
-    _checkHelper(x, y) {
-        if (x <= 0 || y <= 0) {
-            return true;
-        }
-
-        return x >= this.world.width || y >= this.world.height;
-    }
-
-    mutate(mutationRate) {
-
     }
 
     getFitness() {
@@ -362,7 +300,7 @@ export default class Car {
         let angle = this.direction.angle();
 
         // Egdes
-        if (true /* draw edges */) {
+        if (false /* draw edges */) {
             let edges = [
                 [
                     cX + Ox * Math.cos(angle) - Oy * Math.sin(angle),
@@ -421,7 +359,7 @@ export default class Car {
         context.font = "12px Arial";
 
         context.fillStyle = 'rgba(0, 0, 0, 1)';
-        context.fillText(this.currentGoal, -18, -1);
+        context.fillText(this.getFitness(), -18, -1);
 
         context.fillText(Math.round(this.lifeTime * 100) / 100, -18, 11);
 
@@ -430,46 +368,22 @@ export default class Car {
         // collider
         this.collider().draw(context);
 
-        if (true /* field of view */) {
-            let fieldOfViewRadian = this.fieldOfViewAngle * Math.PI / 180;
+        let fieldOfViewRadian = this.fieldOfViewAngle * Math.PI / 180;
 
-            let fieldOfViewStart = this.direction.angle() - fieldOfViewRadian * 0.5;
+        let fieldOfViewStart = this.direction.angle() - fieldOfViewRadian * 0.5;
 
-            for (let sector = 0; sector < this.fieldOfViewSectors; sector++) {
-                // FoV
-                context.beginPath();
+        for (let ray = 0; ray < this.fieldOfViewRays; ray++) {
+            let angle = fieldOfViewStart + (ray / this.fieldOfViewRays) * fieldOfViewRadian;
 
-                let alpha = 0.05 + (sector / this.fieldOfViewSectors * 0.3);
+            let direction = Vector2.fromAngle(angle);
 
-                if (this.objectsInFieldOfView()[sector].type === ItemObstacle) {
-                    context.fillStyle = 'rgba(200, 100, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance * 0.5) + ')';
-                    context.strokeStyle = 'rgba(200, 100, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance * 0.5) + ')';
-                } else if (this.objectsInFieldOfView()[sector].type === ItemGoal) {
-                    context.fillStyle = 'rgba(100, 200, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance * 0.5) + ')';
-                    context.strokeStyle = 'rgba(100, 200, 100, ' + Math.abs(this.objectsInFieldOfView()[sector].distance * 0.5) + ')';
-                } else {
-                    context.fillStyle = 'rgba(200, 200, 200, ' + alpha + ')';
-                    context.strokeStyle = 'rgba(200, 200, 200, ' + alpha + ')';
-                }
-
-                context.moveTo(this.centerX(), this.centerY());
-
-                context.arc(
-                    this.centerX(),
-                    this.centerY(),
-                    this.fieldOfViewDistance,
-                    fieldOfViewStart + (fieldOfViewRadian / this.fieldOfViewSectors) * sector,
-                    fieldOfViewStart + (fieldOfViewRadian / this.fieldOfViewSectors) * (sector + 1)
-                );
-
-                context.lineTo(this.centerX(), this.centerY());
-
-                context.fill();
-                context.stroke();
+            if (this.hits[ray].type === ItemNone) {
+                new Line(this.position, direction, this.fieldOfViewDistance).draw(context, `rgba(0, 0, 0, 0.2)`);
+            } else {
+                let color = this.hits[ray].type === ItemGoal ? `rgba(123, 255, 123, 0.2)` : `rgba(255, 123, 123, 0.2)`;
+                new Line(this.position, direction, this.hits[ray].distance).draw(context, color);
             }
         }
-
-        // this.brain.draw(context);
     }
 }
 
